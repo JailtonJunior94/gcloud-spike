@@ -1,7 +1,9 @@
 package drive
 
 import (
+	"bytes"
 	"context"
+	"encoding/csv"
 	"fmt"
 	"log"
 
@@ -23,37 +25,45 @@ func NewUpload(credentials []byte) (*upload, error) {
 	return &upload{service: service}, nil
 }
 
-func (u *upload) Upload() error {
-	files, err := u.service.Files.List().Do()
+func (u *upload) Upload(fileID string) error {
+	file, err := u.service.Files.Get(fileID).Do()
 	if err != nil {
 		return fmt.Errorf("%s%v", prefixLog, err)
 	}
 
-	for _, file := range files.Files {
-		log.Printf("%sfile: %s, id: %s\n", prefixLog, file.Name, file.Id)
+	var buffer bytes.Buffer
+	writer := csv.NewWriter(&buffer)
+
+	records := [][]string{
+		{"Name", "Age"},
+		{"Jailton", "31"},
+		{"Stefany", "30"},
+		{"Antony", "04"},
+		{"Noah", "00"},
 	}
 
-	file := &drive.File{
-		Name:     "file.json",
-		MimeType: "application/json",
-		Parents:  []string{"18Btpom3U6GJj3ZAzxgPaW3Fm16ITNxTd"},
+	if err := writer.WriteAll(records); err != nil {
+		return fmt.Errorf("%s%v", prefixLog, err)
 	}
 
-	driveFile, err := u.service.Files.Create(file).Media(nil).Do()
+	gDriveFile := &drive.File{
+		Name:     "users.csv",
+		MimeType: "text/csv",
+		Parents:  []string{file.Id},
+	}
+
+	fileCreated, err := u.service.Files.Create(gDriveFile).Media(&buffer).Do()
+	if err != nil {
+		return fmt.Errorf("%s%v", prefixLog, err)
+	}
+	log.Printf("%sfile '%s' uploaded in '%s' folder\n", prefixLog, fileCreated.Name, file.Name)
+
+	permission := &drive.Permission{Role: "writer", Type: "anyone"}
+	permissions, err := u.service.Permissions.Create(fileCreated.Id, permission).Do()
 	if err != nil {
 		return fmt.Errorf("%s%v", prefixLog, err)
 	}
 
-	permission := &drive.Permission{
-		Role: "writer",
-		Type: "anyone",
-	}
-
-	permissions, err := u.service.Permissions.Create(driveFile.Id, permission).Do()
-	if err != nil {
-		return fmt.Errorf("%s%v", prefixLog, err)
-	}
-
-	log.Println(permissions)
+	log.Printf("%sfile '%s' shared with link: %s\n", prefixLog, fileCreated.Name, permissions.DisplayName)
 	return nil
 }

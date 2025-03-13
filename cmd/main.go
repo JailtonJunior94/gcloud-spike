@@ -29,7 +29,7 @@ func main() {
 				log.Fatal(err)
 			}
 
-			if err := upload.Upload(); err != nil {
+			if err := upload.Upload("18Btpom3U6GJj3ZAzxgPaW3Fm16ITNxTd"); err != nil {
 				log.Fatal(err)
 			}
 		},
