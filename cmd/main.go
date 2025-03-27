@@ -1,18 +1,25 @@
 package main
 
 import (
+	"encoding/base64"
 	"log"
-	"os"
 
+	"github.com/jailtonjunior94/gcloud-spike/cmd/chat"
 	"github.com/jailtonjunior94/gcloud-spike/cmd/drive"
+	"github.com/jailtonjunior94/gcloud-spike/configs"
 
 	"github.com/spf13/cobra"
 )
 
 func main() {
-	credentials, err := os.ReadFile("../credentials.json")
+	cfg, err := configs.LoadConfig(".")
 	if err != nil {
-		log.Fatalf("error reading credentials file: %v", err)
+		log.Fatalf("error loading config: %v", err)
+	}
+
+	serviceAccount, err := base64.StdEncoding.DecodeString(cfg.GCloudAPIKey)
+	if err != nil {
+		log.Fatalf("failed to decode Base64 string: %v", err)
 	}
 
 	root := &cobra.Command{
@@ -24,12 +31,12 @@ func main() {
 		Use:   "upload",
 		Short: "drive is a spike for Google Drive",
 		Run: func(cmd *cobra.Command, args []string) {
-			upload, err := drive.NewUpload(credentials)
+			upload, err := drive.NewUpload(serviceAccount)
 			if err != nil {
 				log.Fatal(err)
 			}
 
-			if err := upload.Upload("18Btpom3U6GJj3ZAzxgPaW3Fm16ITNxTd"); err != nil {
+			if err := upload.Upload(cfg.GDriveFolderID); err != nil {
 				log.Fatal(err)
 			}
 		},
@@ -38,6 +45,16 @@ func main() {
 	chat := &cobra.Command{
 		Use:   "chat",
 		Short: "chat is a spike for Google Chat",
+		Run: func(cmd *cobra.Command, args []string) {
+			chat, err := chat.NewChat(serviceAccount)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			if err := chat.SendMessage("", ""); err != nil {
+				log.Fatal(err)
+			}
+		},
 	}
 
 	root.AddCommand(upload, chat)

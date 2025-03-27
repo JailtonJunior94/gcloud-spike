@@ -6,6 +6,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"log"
+	"strconv"
 
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/option"
@@ -34,20 +35,12 @@ func (u *upload) Upload(fileID string) error {
 	var buffer bytes.Buffer
 	writer := csv.NewWriter(&buffer)
 
-	records := [][]string{
-		{"Name", "Age"},
-		{"Jailton", "31"},
-		{"Stefany", "30"},
-		{"Antony", "04"},
-		{"Noah", "00"},
-	}
-
-	if err := writer.WriteAll(records); err != nil {
+	if err := writer.WriteAll(generateRecords(1_00000)); err != nil {
 		return fmt.Errorf("%s%v", prefixLog, err)
 	}
 
 	gDriveFile := &drive.File{
-		Name:     "users.csv",
+		Name:     "customers.csv",
 		MimeType: "text/csv",
 		Parents:  []string{file.Id},
 	}
@@ -56,14 +49,21 @@ func (u *upload) Upload(fileID string) error {
 	if err != nil {
 		return fmt.Errorf("%s%v", prefixLog, err)
 	}
-	log.Printf("%sfile '%s' uploaded in '%s' folder\n", prefixLog, fileCreated.Name, file.Name)
 
 	permission := &drive.Permission{Role: "writer", Type: "anyone"}
-	permissions, err := u.service.Permissions.Create(fileCreated.Id, permission).Do()
+	_, err = u.service.Permissions.Create(fileCreated.Id, permission).Do()
 	if err != nil {
 		return fmt.Errorf("%s%v", prefixLog, err)
 	}
 
-	log.Printf("%sfile '%s' shared with link: %s\n", prefixLog, fileCreated.Name, permissions.DisplayName)
+	log.Printf("%sfile '%s' uploaded in '%s' folder\n", prefixLog, fileCreated.Name, file.Name)
 	return nil
+}
+
+func generateRecords(numRecords int) [][]string {
+	records := [][]string{{"Name", "Age"}}
+	for i := 1; i <= numRecords; i++ {
+		records = append(records, []string{fmt.Sprintf("Name%d", i), strconv.Itoa(20 + (i % 30))})
+	}
+	return records
 }
