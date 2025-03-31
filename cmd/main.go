@@ -1,8 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"encoding/base64"
+	"encoding/csv"
+	"fmt"
 	"log"
+	"strconv"
 
 	"github.com/jailtonjunior94/gcloud-spike/cmd/chat"
 	"github.com/jailtonjunior94/gcloud-spike/cmd/drive"
@@ -36,7 +40,24 @@ func main() {
 				log.Fatal(err)
 			}
 
-			if err := upload.Upload(cfg.GDriveFolderID); err != nil {
+			records := [][]string{{"Name", "Age"}}
+			for i := 1; i <= 1_000_000; i++ {
+				records = append(records, []string{fmt.Sprintf("Name%d", i), strconv.Itoa(20 + (i % 30))})
+			}
+
+			var buffer bytes.Buffer
+			writer := csv.NewWriter(&buffer)
+
+			if err := writer.WriteAll(records); err != nil {
+				log.Fatal(err)
+			}
+
+			folder, err := upload.GetFolderByID(cfg.GDriveFolderID)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			if err := upload.Upload(folder, buffer); err != nil {
 				log.Fatal(err)
 			}
 		},
